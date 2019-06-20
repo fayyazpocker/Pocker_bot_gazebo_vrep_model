@@ -6,19 +6,22 @@ robotHandle = sim.getObjectHandle('pocker_bot_base_link')
 motorLeft=sim.getObjectHandle('joint_left_wheel_link')
 motorRight=sim.getObjectHandle('joint_right_wheel_link')
 odomhandle = sim.getObjectHandle('Odom')
+base_link_handle = sim.getObjectHandle('Base_link')
+laser = sim.getObjectHandle('Hokuyo')
 
 --Publishers
 odom_publisher = simROS.advertise('/odom','nav_msgs/Odometry')
 
 -- TF frames
-tf_map2odom = true -- make it false if you dont want map to odom transform
-tf_odom2base = true -- make it false if you dont want odom to base transform
+tf_map2odom = false -- make it false if you dont want map to odom transform
+tf_odom2base = false -- make it false if you dont want odom to base transform
 
 map_frame = "map"
 odom_frame = "odom"
 base_frame = "base_link"
 left_wheel_link_name = "left_wheel_link"
 right_wheel_link_name = "right_wheel_link"
+laser_link_name = "laser_frame"
 
 --function to set the target velocity of wheels
 function set_wheel_target_velocity(left_vel,right_vel)
@@ -31,8 +34,8 @@ end
 function cmd_callback(msg) 
     vel = msg.linear.x
     ang = msg.angular.z
-    left_vel = vel - (wheel_diameter/2)*ang
-    right_vel = vel + (wheel_diameter/2)*ang
+    left_vel = vel + (wheel_diameter)*ang
+    right_vel = vel - (wheel_diameter)*ang
 
     set_wheel_target_velocity(left_vel,right_vel)
 end
@@ -63,16 +66,17 @@ function send_transforms()
     transforms = {}
     if tf_map2odom then
         table.insert(transforms,getTransformStamped(odomhandle,odom_frame,-1,map_frame)) --map --> odom
-        print("hi")
+        -- print("hi")
     end
 
     if tf_odom2base then
         table.insert(transforms,getTransformStamped(robotHandle,base_frame,odomhandle,odom_frame)) -- odom --> base_frame
     end
 
-    table.insert(transforms,getTransformStamped(motorLeft,left_wheel_link_name,robotHandle,base_frame)) -- base_frame --> left_wheel_link
-    table.insert(transforms,getTransformStamped(motorRight,right_wheel_link_name,robotHandle,base_frame))
-    print (transforms)
+    table.insert(transforms,getTransformStamped(motorLeft,left_wheel_link_name,base_link_handle,base_frame)) -- base_frame --> left_wheel_link
+    table.insert(transforms,getTransformStamped(motorRight,right_wheel_link_name,base_link_handle,base_frame))
+    -- print (transforms)
+    table.insert(transforms,getTransformStamped(laser,laser_link_name,base_link_handle,base_frame))
 
     simROS.sendTransforms(transforms)
 end
@@ -80,8 +84,8 @@ end
 --Function to publish odom as nav_msgs/Odometry
 function publish_odom()
 
-    tf_odom=getTransformStamped(robotHandle,base_frame,odomhandle,odom_frame) --odom --> base_frame
-    linearVelocity, angularVelocity= sim.getObjectVelocity(robotHandle)
+    tf_odom=getTransformStamped(base_link_handle,base_frame,odomhandle,odom_frame) --odom --> base_frame
+    linearVelocity, angularVelocity= sim.getObjectVelocity(base_link_handle)
     t=sim.getSystemTime()
 
     odom = 
@@ -114,12 +118,12 @@ function publish_odom()
 end
 
 function set_pose_callback(msg)
-    simResetDynamicObject(sim_handle_all)
+    sim.resetDynamicObject(sim.handle_all)
     sim.setObjectPosition(robotHandle,-1,{msg.x,msg.y,(wheel_diameter/2)})
     sim.setObjectOrientation(robotHandle,-1,{0,0,msg.theta})
     sim.setObjectPosition(odomhandle,robotHandle,{0,0,0})
     sim.setObjectOrientation(odomhandle,robotHandle,{0,0,0})
-    simResetDynamicObject(sim_handle_all)
+    sim.resetDynamicObject(sim.handle_all)
     -- return true
 end
 
@@ -144,9 +148,9 @@ if (sim_call_type==sim.syscb_init) then
 
 -- Detaching the odom dummy for odom frame and setting the dummy at the same position as the robot at a height at the radius of the wheel
     sim.setObjectParent(odomhandle,-1,true)
-    sim.setObjectPosition(odomhandle,robotHandle,{0,0,0})
+    sim.setObjectPosition(odomhandle,base_link_handle,{0,0,0})
     odom_pos = sim.getObjectPosition(odomhandle,-1)
-    sim.setObjectPosition(odomhandle,-1,{odom_pos[1],odom_pos[2],(wheel_diameter/2)})
+    sim.setObjectPosition(odomhandle,-1,{odom_pos[1],odom_pos[2],0}) -- base_link must be at the ground
 
 -- Enable topic subscription:
     cmd_vel_sub = simROS.subscribe('/cmd_vel','geometry_msgs/Twist','cmd_callback')
