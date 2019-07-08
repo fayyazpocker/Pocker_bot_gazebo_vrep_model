@@ -3,14 +3,14 @@ This repository contains vrep and gazebo model of pocker_bot
 
 ## V-REP model : pocker_bot.ttm
 
-![alt text](vrep/Non-ROS/pocker_bot.png)
-![alt text](vrep/Non-ROS/pocker_bot_model.png)
+![alt text](V-REP/Non-ROS/pocker_bot.png)
+![alt text](V-REP/Non-ROS/pocker_bot_model.png)
 
 Model can be controlled using keyboard.
 
 ## V-REP ROS model : pocker_bot_ros.ttm
-![alt text](vrep/ROS/pocker_bot_ros.png)
-![alt text](vrep/ROS/pocker_bot_ros_tf.png)
+![alt text](V-REP/ROS/pocker_bot_ros.png)
+![alt text](V-REP/ROS/pocker_bot_ros_tf.png)
 
 On running the simulation following node run:
 **/vrep_ros_interface**
