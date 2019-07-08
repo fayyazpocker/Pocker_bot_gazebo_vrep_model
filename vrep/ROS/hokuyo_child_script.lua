@@ -1,9 +1,8 @@
 -- This is a ROS enabled Hokuyo_04LX_UG01 model (although it can be used as a generic 
 -- ROS enabled laser scanner), based on the existing Hokuyo model. It performs instantaneous
--- scans and publishes ROS Laserscan msgs, along with the sensor's tf.
+-- scans and publishes ROS Laserscan msgs.
 
-laser_frame = "laser_frame"
-laser_scan_pub = simROS.advertise('/scan','sensor_msgs/LaserScan') 
+
 
 function sysCall_init() 
     laserHandle=sim.getObjectHandle("Hokuyo_URG_04LX_UG01_ROS_laser")
@@ -13,11 +12,14 @@ function sysCall_init()
     objName=sim.getObjectName(modelHandle)
     -- print (objName)
     -- communicationTube=sim.tubeOpen(0,objName..'_HOKUYO',1)
+    exists, laser_frame=simROS.getParamString("laser_frame","laser_sensor")
+    exists, angle_covered=simROS.getParamDouble("scan_angle_deg",180)
+    laser_scan_pub = simROS.advertise('/scan','sensor_msgs/LaserScan') 
 
-    scanRange=180*math.pi/180 --You can change the scan range. Angle_min=-scanRange/2, Angle_max=scanRange/2-stepSize
+    scanRange=angle_covered*math.pi/180 --You can change the scan range. Angle_min=-scanRange/2, Angle_max=scanRange/2-stepSize
     stepSize=2*math.pi/1024
     pts=math.floor(scanRange/stepSize)
-    print (pts)
+    print ("scanrange: ", scanRange, pts)
     dists={}
     points={}
     segments={}
@@ -25,11 +27,11 @@ function sysCall_init()
     for i=1,pts*3,1 do
         table.insert(points,0)
     end
-    print (#points)
+    --print (#points)
     for i=1,pts*7,1 do
         table.insert(segments,0)
     end
-    print (#segments)
+   --print (#segments)
     black={0,0,0}
     red={1,0,0}
     lines100=sim.addDrawingObject(sim.drawing_lines,1,0,-1,1000,black,black,black,red)
@@ -137,14 +139,14 @@ function sysCall_sensing()
     
     
     -- Now send the data:
-    if #points>0 then
-        table.insert(dists,-scanRange*0.5)  --append angle_min to [ranges]
-        table.insert(dists,scanRange*0.5-stepSize) --append angle_max to [ranges]
-        table.insert(dists,stepSize) --append stepsize to [ranges]
+    -- if #points>0 then
+        --table.insert(dists,-scanRange*0.5)  --append angle_min to [ranges]
+        --table.insert(dists,scanRange*0.5-stepSize) --append angle_max to [ranges]
+        --table.insert(dists,stepSize) --append stepsize to [ranges]
         -- The publisher defined further up uses the data stored in signal 'rangeDat'..objName
         -- sim.setStringSignal('rangeDat'..objName,sim.packFloatTable(dists))
 
-    end
+    -- end
     range_scan = {}
     for i=1,#dists,1 do
         range_scan[i] = dists[i]
@@ -152,7 +154,7 @@ function sysCall_sensing()
     -- print (#range_scan)
     -- print (range_scan)
     -- print (#dists)
-    t=sim.getSystemTime()
+    t=simROS.getTime();
     -- scan_data = 
     scan_data = 
     {
@@ -167,11 +169,13 @@ function sysCall_sensing()
         angle_increment= stepSize,
         time_increment= (50/pts)/1000,
         scan_time = t,
-        range_min = 0,
-        range_max = 10,
+        range_min = 0.001, --to 
+        range_max = 10, --same range is set in the properties of the proximity sensor
         ranges = range_scan,
         intensities = nil
     }
-    -- print (scan_data.ranges[0])
+    --print (scan_data.ranges)
+   -- print (#scan_data.ranges)
+    --print ("scanrange: , stepSize: , pts: ,", scanRange, stepSize, pts)
     simROS.publish(laser_scan_pub,scan_data)
 end 
